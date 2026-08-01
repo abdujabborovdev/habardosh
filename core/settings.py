@@ -124,3 +124,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://habardosh-2.onrender.com',
+]

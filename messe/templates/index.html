@@ -6,14 +6,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-white h-screen flex items-center justify-center">
-    <div class="bg-slate-800 p-8 rounded-2xl w-96 shadow-2xl border border-slate-700 text-center">
-        <h1 class="text-3xl font-bold mb-2 text-indigo-400">Talkify</h1>
-        <p class="text-slate-400 mb-6 text-sm">Chatga kirish uchun ismingizni yozing</p>
+    <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-md shadow-xl text-center">
+        <h1 class="text-2xl font-bold text-indigo-400 mb-2">Talkify</h1>
+        <p class="text-slate-400 text-sm mb-6">Chatga kirish uchun o'z ismingizni yozing</p>
 
-        <form method="POST" class="space-y-4">
+        <!-- Formani to'g'ri POST so'rovga yo'naltiramiz -->
+        <form method="POST" action="{% url 'index' %}" class="flex flex-col gap-4">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Ismingiz..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-center text-lg" required autocomplete="off">
-            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-semibold transition shadow-lg shadow-indigo-600/30">Chatga kirish</button>
+            <input type="text" name="username" id="username-input" placeholder="Ismingiz..." required autocomplete="off" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm text-white">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-semibold transition shadow-lg shadow-indigo-600/30 text-sm">Chatga kirish</button>
         </form>
     </div>
 </body>

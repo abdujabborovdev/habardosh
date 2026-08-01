@@ -36,11 +36,23 @@ def send_message_view(request):
 from django.shortcuts import render
 
 
+from django.shortcuts import redirect, render
+
+
 def index(request):
+  if request.method == 'POST':
+    username = request.POST.get('username', '').strip()
+    if username:  # Agar ism kiritilgan bo'lsa
+      request.session['username'] = username  # Sessiyada saqlaymiz
+      return redirect('chat')
+
   return render(request, 'index.html')
 
 
 def chat_view(request):
-  # Agar username sessiyada bo'lmasa yoki boshqa mantiq bo'lsa
-  username = request.GET.get('username', 'Mehmon')
+  # Sessiyadan usernameni olamiz, agar yo'q bo'lsa bosh sahifaga qaytaramiz
+  username = request.session.get('username')
+  if not username:
+    return redirect('index')
+
   return render(request, 'chat.html', {'username': username})

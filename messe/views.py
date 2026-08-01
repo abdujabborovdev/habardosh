@@ -1,22 +1,33 @@
-from django.shortcuts import redirect, render
+from django.http import JsonResponse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from .models import Message
 
 
-def index_view(request):
+def send_message_view(request):
   if request.method == 'POST':
-    username = request.POST.get('username').strip()
-    if username:
-      # Agar bu ism allaqachon sessionda yoki chatda band qilingan bo'lsa
-      # (Oddiy mantiqda hozircha session orqali tekshiramiz)
-      request.session['username'] = username
-      return redirect('chat')
-  return render(request, 'index.html')
+    username = request.POST.get('username')
+    body = request.POST.get('body', '')
+    image = request.FILES.get('image')
 
+    # Bazaga saqlash
+    message_obj = Message.objects.create(
+        username=username, body=body, image=image
+    )
 
-def chat_view(request):
-  username = request.session.get('username')
-  if not username:
-    return redirect('index')
+    image_url = message_obj.image.url if message_obj.image else None
 
-  messages = Message.objects.all().order_by('created')
-  return render(request, 'chat.html', {'username': username, 'messages': messages})
+    # WebSocket orqali guruhdagi barchaga yuborish
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'chat_room_group', {
+            'type': 'chat_message',
+            'message': body,
+            'username': username,
+            'image_url': image_url,
+        }
+    )
+
+    return JsonResponse({'status': 'success', 'image_url': image_url})
+
+  return JsonResponse({'status': 'failed'}, status=400)

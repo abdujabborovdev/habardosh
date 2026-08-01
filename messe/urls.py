@@ -1,13 +1,10 @@
-from django.conf import settings
-from django.conf.urls.static import static
-from django.contrib import admin
-from django.urls import include, path
+from django.urls import path
+from . import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('messe.urls')),
+    path('', views.index, name='index'),
+    path('chat/', views.chat_view, name='chat'),
+    path(
+        'send-message/', views.send_message_view, name='send_message'
+    ),  # <--- Mana bu qo'shiladi
 ]
-
-# Media fayllarni brauzerda ko'rsatish uchun
-if settings.DEBUG:
-  urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -31,3 +31,16 @@ def send_message_view(request):
     return JsonResponse({'status': 'success', 'image_url': image_url})
 
   return JsonResponse({'status': 'failed'}, status=400)
+
+
+from django.shortcuts import render
+
+
+def index(request):
+  return render(request, 'index.html')
+
+
+def chat_view(request):
+  # Agar username sessiyada bo'lmasa yoki boshqa mantiq bo'lsa
+  username = request.GET.get('username', 'Mehmon')
+  return render(request, 'chat.html', {'username': username})

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Talkify - Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white h-screen flex flex-col justify-between">
+    <!-- Header -->
+    <header class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-indigo-400">Talkify Chat</h1>
+        <div class="flex items-center gap-4">
+            <span class="text-sm bg-indigo-600/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Foydalanuvchi: <b>{{ username }}</b></span>
+            <a href="{% url 'index' %}" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1 rounded-lg text-sm border border-red-500/30 transition">Chiqish (Logout)</a>
+        </div>
+    </header>
+
+    <!-- Xabarlar chiqadigan joy -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
+        {% for msg in messages %}
+            <div class="flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl {% if msg.username == username %} ml-auto bg-indigo-600 text-white rounded-br-none {% else %} mr-auto bg-slate-800 border border-slate-700 rounded-bl-none text-slate-200 {% endif %}">
+                <div class="text-xs {% if msg.username == username %} text-indigo-200 {% else %} text-indigo-400 {% endif %} font-bold mb-1">{{ msg.username }}</div>
+                <div class="text-sm">{{ msg.body }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Xabar yozish inputi -->
+    <div class="bg-slate-800 p-4 border-t border-slate-700">
+        <div class="max-w-4xl mx-auto flex gap-3">
+            <input id="chat-message-input" type="text" placeholder="Xabar yozing..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm" autocomplete="off">
+            <button id="chat-message-submit" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold transition shadow-lg shadow-indigo-600/30 text-sm">Yuborish</button>
+        </div>
+    </div>
+
+    <!-- WebSocket JavaScript qismi -->
+    <script>
+        const username = "{{ username }}";
+        const chatMessages = document.querySelector('#chat-messages');
+
+        // Sahifa ochilganda oxirgi xabarga pastga tushirish
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+
+            let messageDiv = document.createElement('div');
+
+            // O'zinikimi yoki boshqanikimi tekshirib klass beramiz (Telegram uslubi)
+            if (data.username === username) {
+                messageDiv.className = "flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ml-auto bg-indigo-600 text-white rounded-br-none";
+                messageDiv.innerHTML = `<div class="text-xs text-indigo-200 font-bold mb-1">${data.username}</div><div class="text-sm">${data.message}</div>`;
+            } else {
+                messageDiv.className = "flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl mr-auto bg-slate-800 border border-slate-700 rounded-bl-none text-slate-200";
+                messageDiv.innerHTML = `<div class="text-xs text-indigo-400 font-bold mb-1">${data.username}</div><div class="text-sm">${data.message}</div>`;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+
+            if (message.trim() !== "") {
+                chatSocket.send(JSON.stringify({
+                    'message': message,
+                    'username': username
+                }));
+                messageInputDom.value = '';
+            }
+        };
+    </script>
+</body>
+</html>

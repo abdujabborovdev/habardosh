@@ -128,8 +128,6 @@ CHANNEL_LAYERS = {
 CSRF_TRUSTED_ORIGINS = [
     'https://habardosh-2.onrender.com',
 ]
-import os
 
-# Media fayllar uchun sozlamalar
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

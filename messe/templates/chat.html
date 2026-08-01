@@ -41,8 +41,10 @@
         // Sahifa ochilganda oxirgi xabarga pastga tushirish
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
+        // Render (HTTPS) uchun wss:// va Localhost uchun ws:// ni avtomatik aniqlash
+        const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
         const chatSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/chat/'
+            wsScheme + window.location.host + '/ws/chat/'
         );
 
         chatSocket.onmessage = function(e) {

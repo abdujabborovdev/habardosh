@@ -20,28 +20,58 @@
         {% for msg in messages %}
             <div class="flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl {% if msg.username == username %} ml-auto bg-indigo-600 text-white rounded-br-none {% else %} mr-auto bg-slate-800 border border-slate-700 rounded-bl-none text-slate-200 {% endif %}">
                 <div class="text-xs {% if msg.username == username %} text-indigo-200 {% else %} text-indigo-400 {% endif %} font-bold mb-1">{{ msg.username }}</div>
-                <div class="text-sm">{{ msg.body }}</div>
+
+                {% if msg.body %}
+                    <div class="text-sm break-words">{{ msg.body }}</div>
+                {% endif %}
+
+                {% if msg.image %}
+                    <img src="{{ msg.image.url }}" class="mt-2 rounded-xl max-h-60 object-cover">
+                {% endif %}
             </div>
         {% endfor %}
     </div>
 
-    <!-- Xabar yozish inputi -->
+    <!-- Xabar va rasm yuborish paneli -->
     <div class="bg-slate-800 p-4 border-t border-slate-700">
-        <div class="max-w-4xl mx-auto flex gap-3">
+        <div class="max-w-4xl mx-auto flex items-center gap-3">
+
+            <!-- Rasm tanlash tugmasi (skrepka ikonchasi) -->
+            <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 px-3 py-3 rounded-xl flex items-center justify-center text-white transition border border-slate-600" title="Rasm yuklash">
+                📷
+                <input type="file" id="chat-image-input" accept="image/*" class="hidden">
+            </label>
+
+            <!-- Matn kiritish inputi -->
             <input id="chat-message-input" type="text" placeholder="Xabar yozing..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm" autocomplete="off">
+
+            <!-- Yuborish tugmasi -->
             <button id="chat-message-submit" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold transition shadow-lg shadow-indigo-600/30 text-sm">Yuborish</button>
         </div>
+        <!-- Tanlangan fayl nomini ko'rsatib turish uchun kichik yozuv -->
+        <div id="file-name-display" class="max-w-4xl mx-auto text-xs text-indigo-300 mt-2"></div>
     </div>
 
-    <!-- WebSocket JavaScript qismi -->
+    <!-- WebSocket va Rasm yuklash JavaScript qismi -->
     <script>
         const username = "{{ username }}";
         const chatMessages = document.querySelector('#chat-messages');
+        const imageInput = document.querySelector('#chat-image-input');
+        const fileNameDisplay = document.querySelector('#file-name-display');
 
         // Sahifa ochilganda oxirgi xabarga pastga tushirish
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Render (HTTPS) uchun wss:// va Localhost uchun ws:// ni avtomatik aniqlash
+        // Rasm tanlanganda nomini chiqarib turish
+        imageInput.addEventListener('change', function() {
+            if (imageInput.files.length > 0) {
+                fileNameDisplay.textContent = "Tanlangan rasm: " + imageInput.files[0].name;
+            } else {
+                fileNameDisplay.textContent = "";
+            }
+        });
+
+        // WebSocket ulanishi
         const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
         const chatSocket = new WebSocket(
             wsScheme + window.location.host + '/ws/chat/'
@@ -52,15 +82,23 @@
 
             let messageDiv = document.createElement('div');
 
-            // O'zinikimi yoki boshqanikimi tekshirib klass beramiz (Telegram uslubi)
+            // Xabarni kim yuborganiga qarab dizayn berish
             if (data.username === username) {
                 messageDiv.className = "flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ml-auto bg-indigo-600 text-white rounded-br-none";
-                messageDiv.innerHTML = `<div class="text-xs text-indigo-200 font-bold mb-1">${data.username}</div><div class="text-sm">${data.message}</div>`;
             } else {
                 messageDiv.className = "flex flex-col max-w-xs lg:max-w-md px-4 py-2 rounded-2xl mr-auto bg-slate-800 border border-slate-700 rounded-bl-none text-slate-200";
-                messageDiv.innerHTML = `<div class="text-xs text-indigo-400 font-bold mb-1">${data.username}</div><div class="text-sm">${data.message}</div>`;
             }
 
+            let htmlContent = `<div class="text-xs ${data.username === username ? 'text-indigo-200' : 'text-indigo-400'} font-bold mb-1">${data.username}</div>`;
+
+            if (data.message) {
+                htmlContent += `<div class="text-sm break-words">${data.message}</div>`;
+            }
+            if (data.image_url) {
+                htmlContent += `<img src="${data.image_url}" class="mt-2 rounded-xl max-h-60 object-cover">`;
+            }
+
+            messageDiv.innerHTML = htmlContent;
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         };
@@ -72,11 +110,40 @@
             }
         };
 
-        document.querySelector('#chat-message-submit').onclick = function(e) {
+        // Yuborish tugmasi bosilganda (Matn yoki Rasmni serverga uzatish)
+        document.querySelector('#chat-message-submit').onclick = async function(e) {
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
+            const imageFile = imageInput.files[0];
 
-            if (message.trim() !== "") {
+            if (message.trim() === "" && !imageFile) return;
+
+            // Agar rasm tanlangan bo'lsa, uni HTTP POST orqali yuborib bazaga saqlaymiz va boshqalarga WebSocket orqali xabar beramiz
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('body', message);
+                formData.append('image', imageFile);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                try {
+                    let response = await fetch('/send-message/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        messageInputDom.value = '';
+                        imageInput.value = '';
+                        fileNameDisplay.textContent = '';
+                    } else {
+                        alert("Rasmni yuborishda xatolik yuz berdi!");
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            } else {
+                // Faqat matn bo'lsa to'g'ridan-to'g'ri WebSocket orqali ketadi
                 chatSocket.send(JSON.stringify({
                     'message': message,
                     'username': username
